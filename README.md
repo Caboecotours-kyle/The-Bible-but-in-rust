@@ -4,7 +4,7 @@ A desktop Bible reader written in Rust with GPUI. Three public-domain translatio
 
 ## Download
 
-Builds for macOS, Windows and Linux are on the [releases page](../../releases). The macOS build is signed and notarized. The Windows build is not signed yet, so Windows asks you to choose More info, then Run anyway.
+Builds for macOS, Windows and Linux are on the [releases page](../../releases). The macOS build is signed and notarized. The Windows build is not signed yet, so Windows asks you to choose More info, then Run anyway. On Linux, extract the archive and run `./install.sh` to add Bible to your launcher, or run `./bible` directly.
 
 ## Speed
 
@@ -21,9 +21,9 @@ Measured with the release build on a 2020 laptop (Intel Core i7-10875H, Linux).
 | Memory with all three open | 133 MB |
 | Download | 10 to 19 MB |
 
-There is no database and nothing to index. Each translation is compiled into the program and kept in memory as one block of text, and a search is a single scan of it, fast enough to rerun on every keystroke. Only the chapter on screen is laid out.
+There is no database and nothing to index. Each translation is compiled into the program and kept in memory as one block of text. A search scans that block once, or twice for several words (once for the exact phrase, once for the longest word), which is fast enough to rerun on every keystroke. Only the chapter on screen is laid out.
 
-`BIBLE_TIMING=1 cargo run --release` runs this benchmark on your machine: each figure is the average of 200 runs in the King James Version.
+The first four rows are the King James Version figures from `BIBLE_TIMING=1 cargo run --release`, which you can run on your own machine. It loads each translation once and averages the lookup and the two searches over 200 runs. The launch time and memory were measured separately with the app running, and the download is the size of the release files.
 
 ## Run from source
 

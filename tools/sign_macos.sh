@@ -20,8 +20,9 @@ ORIGINAL_KEYCHAINS=()
 while IFS= read -r line; do ORIGINAL_KEYCHAINS+=("$(echo "$line" | sed -E 's/^ *"(.*)"$/\1/')"); done < <(security list-keychains -d user)
 
 cleanup() {
+  # Every step runs even if an earlier one fails, so the signing key is never left behind.
   hdiutil detach "$WORK/mount" >/dev/null 2>&1 || true
-  security list-keychains -d user -s "${ORIGINAL_KEYCHAINS[@]}"
+  security list-keychains -d user -s "${ORIGINAL_KEYCHAINS[@]}" || true
   security delete-keychain "$KEYCHAIN" >/dev/null 2>&1 || true
   rm -rf "$WORK"
 }

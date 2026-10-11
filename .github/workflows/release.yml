@@ -47,6 +47,7 @@ jobs:
           cargo build --release --locked
           mkdir Bible
           cp target/release/bible assets/icon/icon.png tools/bible.desktop Bible/
+          cp tools/install_linux.sh Bible/install.sh
           tar -czf Bible-linux-x86_64.tar.gz Bible
 
       - name: Build (macOS)
