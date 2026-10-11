@@ -7,7 +7,18 @@ set -euo pipefail
 VERSION=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)
 APP=dist/Bible.app
 rm -rf dist Bible-macos.dmg
-mkdir -p "$APP/Contents/MacOS"
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+
+# The icon, in every size macOS asks for.
+ICONSET=dist/Bible.iconset
+mkdir "$ICONSET"
+for size in 16 32 128 256 512; do
+  sips -z $size $size assets/icon/icon.png --out "$ICONSET/icon_${size}x${size}.png" >/dev/null
+  sips -z $((size * 2)) $((size * 2)) assets/icon/icon.png --out "$ICONSET/icon_${size}x${size}@2x.png" >/dev/null
+done
+iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/Bible.icns"
+rm -rf "$ICONSET"
+
 lipo -create -output "$APP/Contents/MacOS/Bible" \
   target/aarch64-apple-darwin/release/bible target/x86_64-apple-darwin/release/bible
 
@@ -19,7 +30,8 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>CFBundleName</key><string>Bible</string>
   <key>CFBundleDisplayName</key><string>Bible</string>
   <key>CFBundleExecutable</key><string>Bible</string>
-  <key>CFBundleIdentifier</key><string>${BUNDLE_ID:-dev.biblereader.Bible}</string>
+  <key>CFBundleIconFile</key><string>Bible</string>
+  <key>CFBundleIdentifier</key><string>${BUNDLE_ID:-com.kylepopp.bible}</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleShortVersionString</key><string>${VERSION}</string>
   <key>CFBundleVersion</key><string>${VERSION}</string>
@@ -46,6 +58,8 @@ else
   codesign --force --sign - "$APP"
 fi
 codesign --verify --strict "$APP"
+# The signed program must still start; this loads all three translations and exits.
+BIBLE_TIMING=1 "$APP/Contents/MacOS/Bible"
 
 ln -s /Applications dist/Applications
 hdiutil create -volname Bible -srcfolder dist -ov -format UDZO Bible-macos.dmg

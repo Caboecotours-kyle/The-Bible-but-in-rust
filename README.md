@@ -4,7 +4,7 @@ A desktop Bible reader written in Rust with GPUI. Three public-domain translatio
 
 ## Download
 
-Builds for macOS, Windows and Linux are on the [releases page](../../releases). They are not signed yet, so macOS asks you to right-click the app and choose Open the first time, and Windows asks you to choose More info, then Run anyway.
+Builds for macOS, Windows and Linux are on the [releases page](../../releases). The macOS build is signed and notarized. The Windows build is not signed yet, so Windows asks you to choose More info, then Run anyway.
 
 ## Run from source
 

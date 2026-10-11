@@ -44,7 +44,9 @@ jobs:
         run: |
           cargo test --release --locked
           cargo build --release --locked
-          tar -czf Bible-linux-x86_64.tar.gz -C target/release bible
+          mkdir Bible
+          cp target/release/bible assets/icon/icon.png tools/bible.desktop Bible/
+          tar -czf Bible-linux-x86_64.tar.gz Bible
 
       - name: Build (macOS)
         if: matrix.name == 'macos'
