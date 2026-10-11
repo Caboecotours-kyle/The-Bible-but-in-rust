@@ -17,6 +17,8 @@ quoted=${quoted//\\/\\\\}
 quoted=${quoted//\"/\\\"}
 quoted=${quoted//\$/\\\$}
 quoted=${quoted//\`/\\\`}
+# Desktop entries decode backslashes once more before reading the quotes.
+quoted=${quoted//\\/\\\\}
 {
   grep -v '^Exec=' bible.desktop
   printf 'Exec="%s"\n' "$quoted"
