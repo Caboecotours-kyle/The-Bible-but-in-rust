@@ -15,9 +15,22 @@ fn main() {
             let started = std::time::Instant::now();
             let t = bible::translation(id);
             let loaded = started.elapsed();
-            let started = std::time::Instant::now();
-            let hits = t.search("the lord is my shepherd").len() + t.search("the").len();
-            println!("{id}: loaded {} verses in {loaded:.1?}, two searches ({hits} hits) in {:.1?}", t.verses.len(), started.elapsed());
+            // Each figure is the average of 200 runs.
+            let time = |work: &dyn Fn() -> usize| {
+                let started = std::time::Instant::now();
+                let mut found = 0;
+                for _ in 0..200 {
+                    found = std::hint::black_box(work());
+                }
+                (started.elapsed() / 200, found)
+            };
+            let (jump, _) = time(&|| t.locate("john 3:16").is_some() as usize);
+            let (phrase, verses) = time(&|| t.search("for god so loved the world").len());
+            let (common, many) = time(&|| t.search("the").len());
+            println!("{id}: loaded {} verses in {loaded:.1?}", t.verses.len());
+            println!("  go to \"john 3:16\": {jump:.2?}");
+            println!("  search \"for god so loved the world\": {phrase:.2?} ({verses} verse)");
+            println!("  search \"the\": {common:.2?} ({many} verses)");
         }
         return;
     }

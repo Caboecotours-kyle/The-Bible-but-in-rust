@@ -1,5 +1,6 @@
 # Builds the app on macOS, Windows and Linux.
-# Run it by hand to check the builds; push a tag like v0.1.0 to publish them as a release.
+# Run it by hand to check the builds; push a tag like v0.1.0 to collect them in a draft release.
+# No signing keys are stored here: the macOS download is signed afterwards with tools/sign_macos.sh.
 name: release
 
 on:
@@ -46,18 +47,13 @@ jobs:
           cargo build --release --locked
           mkdir Bible
           cp target/release/bible assets/icon/icon.png tools/bible.desktop Bible/
+          cp tools/install_linux.sh Bible/install.sh
           tar -czf Bible-linux-x86_64.tar.gz Bible
 
       - name: Build (macOS)
         if: matrix.name == 'macos'
         env:
           MACOSX_DEPLOYMENT_TARGET: "11.0"
-          MACOS_CERTIFICATE_P12: ${{ secrets.MACOS_CERTIFICATE_P12 }}
-          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
-          MACOS_SIGNING_IDENTITY: ${{ secrets.MACOS_SIGNING_IDENTITY }}
-          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
-          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
-          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
         run: |
           rustup target add x86_64-apple-darwin
           cargo build --release --locked --target aarch64-apple-darwin
@@ -93,4 +89,5 @@ jobs:
       - name: Create the release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --title "$GITHUB_REF_NAME" --generate-notes Bible-*
+        # A draft: it goes public once the macOS download has been signed and notarized.
+        run: gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --title "$GITHUB_REF_NAME" --generate-notes --draft Bible-*

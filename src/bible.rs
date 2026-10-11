@@ -375,16 +375,20 @@ impl Translation {
         if words.len() == 1 {
             return phrase;
         }
-        let mut all: Option<Vec<u32>> = None;
-        for word in &words {
-            let hits = self.verses_containing(word);
-            all = Some(match all {
-                None => hits,
-                Some(prev) => intersect(&prev, &hits),
-            });
-        }
+        // Scan once for the longest word, which is usually the rarest, then check the
+        // other words only inside the verses that scan found.
+        let longest = words.iter().copied().max_by_key(|word| word.len()).unwrap_or("");
+        let all: Vec<u32> = self
+            .verses_containing(longest)
+            .into_iter()
+            .filter(|&verse| {
+                let range = &self.verses[verse as usize].text;
+                let text = &self.lower.as_bytes()[range.start as usize..range.end as usize];
+                words.iter().all(|word| memmem::find(text, word.as_bytes()).is_some())
+            })
+            .collect();
         let mut results = phrase.clone();
-        results.extend(difference(&all.unwrap_or_default(), &phrase));
+        results.extend(difference(&all, &phrase));
         results
     }
 
@@ -425,22 +429,6 @@ fn strip_tags(text: &str) -> String {
         rest = &rest[at + rest[at..].find('>').map_or(1, |end| end + 1)..];
     }
     out.push_str(rest);
-    out
-}
-
-fn intersect(a: &[u32], b: &[u32]) -> Vec<u32> {
-    let (mut i, mut j, mut out) = (0, 0, Vec::new());
-    while i < a.len() && j < b.len() {
-        match a[i].cmp(&b[j]) {
-            std::cmp::Ordering::Less => i += 1,
-            std::cmp::Ordering::Greater => j += 1,
-            std::cmp::Ordering::Equal => {
-                out.push(a[i]);
-                i += 1;
-                j += 1;
-            }
-        }
-    }
     out
 }
 

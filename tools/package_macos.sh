@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Turn the two macOS builds into one Bible.app inside Bible-macos.dmg.
-# Signs and notarizes when the Apple credentials are present; otherwise the app is
-# ad-hoc signed and macOS asks for a right-click, Open on first launch.
+# The result is not yet signed for distribution: tools/sign_macos.sh does that on a
+# Mac that holds the Developer ID certificate, so no signing key leaves that Mac.
 set -euo pipefail
 
 VERSION=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)
@@ -42,32 +42,11 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 </plist>
 PLIST
 
-if [[ -n "${MACOS_CERTIFICATE_P12:-}" ]]; then
-  KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
-  KEYCHAIN_PASSWORD=$(uuidgen)
-  echo "$MACOS_CERTIFICATE_P12" | base64 --decode > "$RUNNER_TEMP/certificate.p12"
-  security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
-  security set-keychain-settings -lut 3600 "$KEYCHAIN"
-  security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
-  security import "$RUNNER_TEMP/certificate.p12" -P "$MACOS_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN"
-  security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN" >/dev/null
-  security list-keychains -d user -s "$KEYCHAIN" login.keychain-db
-  codesign --force --options runtime --timestamp --sign "$MACOS_SIGNING_IDENTITY" "$APP"
-else
-  echo "No signing certificate configured: ad-hoc signing."
-  codesign --force --sign - "$APP"
-fi
+# A placeholder signature; tools/sign_macos.sh applies the real one.
+codesign --force --sign - "$APP"
 codesign --verify --strict "$APP"
 # The signed program must still start; this loads all three translations and exits.
 BIBLE_TIMING=1 "$APP/Contents/MacOS/Bible"
 
 ln -s /Applications dist/Applications
 hdiutil create -volname Bible -srcfolder dist -ov -format UDZO Bible-macos.dmg
-
-if [[ -n "${MACOS_CERTIFICATE_P12:-}" && -n "${ASC_KEY_P8:-}" ]]; then
-  codesign --force --timestamp --sign "$MACOS_SIGNING_IDENTITY" Bible-macos.dmg
-  echo "$ASC_KEY_P8" | base64 --decode > "$RUNNER_TEMP/asc_key.p8"
-  xcrun notarytool submit Bible-macos.dmg --key "$RUNNER_TEMP/asc_key.p8" --key-id "$ASC_KEY_ID" --issuer "$ASC_ISSUER_ID" --wait
-  xcrun stapler staple Bible-macos.dmg
-  rm -f "$RUNNER_TEMP/asc_key.p8" "$RUNNER_TEMP/certificate.p12"
-fi
