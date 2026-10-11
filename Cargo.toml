@@ -1,0 +1,16 @@
+[package]
+name = "bible"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+gpui = "0.2.2"
+memchr = "2.8.3"
+
+[profile.release]
+lto = "thin"
+strip = true
+
+# gpui 0.2.2 with one change to its line breaking; see vendor/gpui/src/text_system/line_wrapper.rs.
+[patch.crates-io]
+gpui = { path = "vendor/gpui" }

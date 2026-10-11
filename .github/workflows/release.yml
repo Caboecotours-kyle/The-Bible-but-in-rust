@@ -1,0 +1,94 @@
+# Builds the app on macOS, Windows and Linux.
+# Run it by hand to check the builds; push a tag like v0.1.0 to publish them as a release.
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: linux, os: ubuntu-22.04 }
+          - { name: macos, os: macos-14 }
+          - { name: windows, os: windows-latest }
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        run: rustup toolchain install stable --profile minimal && rustup default stable
+
+      - name: Linux libraries
+        if: matrix.name == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang libasound2-dev libfontconfig-dev libssl-dev libvulkan-dev \
+            libwayland-dev libx11-xcb-dev libxkbcommon-dev libxkbcommon-x11-dev libzstd-dev
+
+      - name: Build and test (Linux)
+        if: matrix.name == 'linux'
+        run: |
+          cargo test --release --locked
+          cargo build --release --locked
+          tar -czf Bible-linux-x86_64.tar.gz -C target/release bible
+
+      - name: Build (macOS)
+        if: matrix.name == 'macos'
+        env:
+          MACOSX_DEPLOYMENT_TARGET: "11.0"
+          MACOS_CERTIFICATE_P12: ${{ secrets.MACOS_CERTIFICATE_P12 }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          MACOS_SIGNING_IDENTITY: ${{ secrets.MACOS_SIGNING_IDENTITY }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: |
+          rustup target add x86_64-apple-darwin
+          cargo build --release --locked --target aarch64-apple-darwin
+          cargo build --release --locked --target x86_64-apple-darwin
+          tools/package_macos.sh
+
+      - name: Build (Windows)
+        if: matrix.name == 'windows'
+        shell: pwsh
+        run: |
+          cargo build --release --locked
+          Copy-Item target/release/bible.exe Bible.exe
+          Compress-Archive -Path Bible.exe -DestinationPath Bible-windows-x86_64.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Bible-${{ matrix.name }}
+          path: |
+            Bible-linux-x86_64.tar.gz
+            Bible-macos.dmg
+            Bible-windows-x86_64.zip
+          if-no-files-found: error
+
+  publish:
+    name: publish
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --title "$GITHUB_REF_NAME" --generate-notes Bible-*
