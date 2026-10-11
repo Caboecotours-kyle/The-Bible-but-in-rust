@@ -9,6 +9,16 @@ APPS="$HOME/.local/share/applications"
 mkdir -p "$BIN" "$ICONS" "$APPS"
 install -m 755 bible "$BIN/bible"
 install -m 644 icon.png "$ICONS/bible.png"
-# The launcher names the program by its full path, so it works whether or not ~/.local/bin is on PATH.
-sed "s|^Exec=.*|Exec=$BIN/bible|" bible.desktop > "$APPS/bible.desktop"
+# The launcher names the program by its full path, so it works whether or not ~/.local/bin
+# is on PATH. The path is quoted the way desktop entries require, so a home folder with
+# spaces or symbols in its name still works.
+quoted="$BIN/bible"
+quoted=${quoted//\\/\\\\}
+quoted=${quoted//\"/\\\"}
+quoted=${quoted//\$/\\\$}
+quoted=${quoted//\`/\\\`}
+{
+  grep -v '^Exec=' bible.desktop
+  printf 'Exec="%s"\n' "$quoted"
+} > "$APPS/bible.desktop"
 echo "Installed. Open Bible from your launcher, or run $BIN/bible"
